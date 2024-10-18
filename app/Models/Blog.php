@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\GenerateUniqueSlugTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Blog extends Model
 {
+    use GenerateUniqueSlugTrait;
+    
     protected $fillable = [
         'title',
         'slug',
