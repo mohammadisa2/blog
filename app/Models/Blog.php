@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Rupadana\ApiService\Contracts\HasAllowedSorts;
+use Rupadana\ApiService\Contracts\HasAllowedFilters;
+use Rupadana\ApiService\Contracts\HasAllowedIncludes;
 
-class Blog extends Model
+class Blog extends Model implements HasAllowedSorts, HasAllowedFilters, HasAllowedIncludes
 {
     use GenerateUniqueSlugTrait;
     
