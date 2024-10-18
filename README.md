@@ -118,7 +118,7 @@ This endpoint retrieves all available categories. No additional parameters are r
 **Endpoint:**
 
 ```http
-GET {{APP_URL}}/api/admin/categories
+GET {{APP_URL}}/api/admin//category-blogs
 ```
 
 ---
