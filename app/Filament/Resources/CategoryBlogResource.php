@@ -2,32 +2,35 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CategoryBlogResource\Pages;
-use App\Filament\Resources\CategoryBlogResource\RelationManagers;
-use App\Models\CategoryBlog;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\CategoryBlog;
+use Filament\Resources\Resource;
+use App\SlugService;
+use App\Filament\Resources\CategoryBlogResource\Pages;
 
 class CategoryBlogResource extends Resource
 {
     protected static ?string $model = CategoryBlog::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-c-list-bullet';
+
+    protected static ?string $navigationGroup = 'Blogs';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (Get $get, Set $set, ?string $old, ?string $state) => SlugService::generate(static::getModel()::findOrNew($get('id')), $get, $set, $old, $state)),
                 Forms\Components\TextInput::make('slug')
                     ->required()
+                    ->readOnly()
                     ->maxLength(255),
             ]);
     }
