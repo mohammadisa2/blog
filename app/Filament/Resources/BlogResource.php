@@ -2,22 +2,24 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BlogResource\Pages;
-use App\Filament\Resources\BlogResource\RelationManagers;
-use App\Models\Blog;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Models\Blog;
 use Filament\Tables;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Resources\Resource;
+use App\SlugService;
+use App\Filament\Resources\BlogResource\Pages;
 
 class BlogResource extends Resource
 {
     protected static ?string $model = Blog::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-s-pencil-square';
+
+    protected static ?string $navigationGroup = 'Blogs';
 
     public static function form(Form $form): Form
     {
@@ -25,19 +27,35 @@ class BlogResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('title')
                     ->required()
-                    ->maxLength(255),
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (Get $get, Set $set, ?string $old, ?string $state) => SlugService::generate(static::getModel()::findOrNew($get('id')), $get, $set, $old, $state)),
                 Forms\Components\TextInput::make('slug')
                     ->required()
+                    ->readOnly()
                     ->maxLength(255),
-                Forms\Components\Textarea::make('content')
+                Forms\Components\FileUpload::make('image')
+                    ->image()
+                    ->disk('public')
+                    ->directory('blog-images')
+                    ->columnSpanFull(),
+                Forms\Components\Select::make('category_blog_id')
+                    ->relationship('category', 'name')
+                    ->required(),
+                Forms\Components\TagsInput::make('tags')
+                    ->separator(',')
+                    ->suggestions(['laravel', 'php', 'filament'])
+                    ->placeholder('Add a tag')
+                    ->splitKeys(['Enter', ' ', ','])
+                ->reorderable(),
+                Forms\Components\MarkdownEditor::make('content')
+                    ->fileAttachmentsDisk('public')
+                    ->fileAttachmentsDirectory('blog-images')
+                    ->fileAttachmentsVisibility('public')
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\FileUpload::make('image')
-                    ->image(),
-                Forms\Components\TextInput::make('tags'),
-                Forms\Components\TextInput::make('category_blog_id')
-                    ->required()
-                    ->numeric(),
+                // Forms\Components\RichEditor::make('content')
+                //     ->required()
+                //     ->columnSpanFull(),
                 Forms\Components\Toggle::make('is_published')
                     ->required(),
                 Forms\Components\DateTimePicker::make('published_at'),
@@ -50,28 +68,21 @@ class BlogResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('slug')
-                    ->searchable(),
-                Tables\Columns\ImageColumn::make('image'),
-                Tables\Columns\TextColumn::make('category_blog_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('category.name')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_published')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('published_at')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('tags')
+                    ->badge()
+                    ->searchable(),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('category')
+                    ->relationship('category', 'name'),
+                Tables\Filters\TernaryFilter::make('is_published'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
