@@ -12,6 +12,10 @@ use Filament\Tables\Table;
 use Filament\Resources\Resource;
 use App\SlugService;
 use App\Filament\Resources\BlogResource\Pages;
+use OpenAI\Laravel\Facades\OpenAI;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Actions;
+use Filament\Forms\Components\Actions\Action;
 
 class BlogResource extends Resource
 {
@@ -29,35 +33,88 @@ class BlogResource extends Resource
                     ->required()
                     ->live(onBlur: true)
                     ->afterStateUpdated(fn (Get $get, Set $set, ?string $old, ?string $state) => SlugService::generate(static::getModel()::findOrNew($get('id')), $get, $set, $old, $state)),
+                        
                 Forms\Components\TextInput::make('slug')
                     ->required()
                     ->readOnly()
                     ->maxLength(255),
+                    
                 Forms\Components\FileUpload::make('image')
                     ->image()
                     ->disk('public')
                     ->directory('blog-images')
                     ->columnSpanFull(),
+                    
                 Forms\Components\Select::make('category_blog_id')
                     ->relationship('category', 'name')
                     ->required(),
+                    
                 Forms\Components\TagsInput::make('tags')
                     ->separator(',')
                     ->suggestions(['laravel', 'php', 'filament'])
                     ->placeholder('Add a tag')
                     ->splitKeys(['Enter', ' ', ','])
-                ->reorderable(),
-                Forms\Components\MarkdownEditor::make('content')
-                    ->fileAttachmentsDisk('public')
-                    ->fileAttachmentsDirectory('blog-images')
-                    ->fileAttachmentsVisibility('public')
-                    ->required()
-                    ->columnSpanFull(),
-                // Forms\Components\RichEditor::make('content')
-                //     ->required()
-                //     ->columnSpanFull(),
+                    ->reorderable(),
+
+                Section::make('Content')
+                    ->description('You can generate content using AI, just enter a prompt and click the button below.')
+                    ->schema([
+                        Forms\Components\MarkdownEditor::make('content')
+                            ->required()
+                            ->columnSpanFull()
+                            ->fileAttachmentsDisk('public')
+                            ->fileAttachmentsDirectory('blog-images')
+                            ->fileAttachmentsVisibility('public'),
+                        Forms\Components\Textarea::make('prompt')
+                            ->columnSpanFull(),
+                        Actions::make([
+                            Action::make('Ai Content Generation')
+                                ->icon('heroicon-m-code-bracket')
+                                ->action(function (Get $get, Set $set): void {
+                                    try {
+                                        $prompt = $get('prompt');
+
+                                        $response = OpenAI::chat()->create([
+                                            'model' => 'gpt-3.5-turbo',
+                                            'messages' => [
+                                                ['role' => 'system', 'content' => 'You are a professional content writer specializing in creating well-structured, engaging blog posts. Write in markdown format.'],
+                                                ['role' => 'user', 'content' => $prompt],
+                                            ],
+                                            'temperature' => 1.2,
+                                            'max_tokens' => 1000,
+                                        ]);
+
+                                        $generatedContent = $response->choices[0]->message->content;
+                                        
+                                        $set('content', $generatedContent);
+
+                                        // Show success notification
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Content Generated Successfully')
+                                            ->success()
+                                            ->send();
+
+                                    } catch (\Exception $e) {
+                                        // Show error notification
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Error Generating Content')
+                                            ->body($e->getMessage())
+                                            ->danger()
+                                            ->send();
+                                        
+                                        // Log the error
+                                        \Illuminate\Support\Facades\Log::error('AI Content Generation Error', [
+                                            'error' => $e->getMessage(),
+                                            'trace' => $e->getTraceAsString()
+                                        ]);
+                                    }
+                                }),
+                        ]),
+                ]),
+
                 Forms\Components\Toggle::make('is_published')
                     ->required(),
+                    
                 Forms\Components\DateTimePicker::make('published_at'),
             ]);
     }
