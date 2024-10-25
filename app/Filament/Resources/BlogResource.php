@@ -72,6 +72,7 @@ class BlogResource extends Resource
                                 ->icon('heroicon-m-code-bracket')
                                 ->action(function (Get $get, Set $set): void {
                                     try {
+                                        $content = $get('content');
                                         $prompt = $get('prompt');
 
                                         $response = OpenAI::chat()->create([
@@ -80,12 +81,16 @@ class BlogResource extends Resource
                                                 ['role' => 'system', 'content' => 'You are a professional content writer specializing in creating well-structured, engaging blog posts. Write in markdown format.'],
                                                 ['role' => 'user', 'content' => $prompt],
                                             ],
-                                            'temperature' => 1.2,
-                                            'max_tokens' => 1000,
+                                            'temperature' => 0.9,
+                                            'max_tokens' => 2000,
                                         ]);
 
                                         $generatedContent = $response->choices[0]->message->content;
-                                        
+
+                                        if ($content) {
+                                            $generatedContent = $content . "\n\n" . $generatedContent;
+                                        }
+
                                         $set('content', $generatedContent);
 
                                         // Show success notification
